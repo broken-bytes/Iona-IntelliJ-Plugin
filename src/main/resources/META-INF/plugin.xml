@@ -1,0 +1,39 @@
+<idea-plugin>
+    <id>dev.iona.intellij</id>
+    <name>Iona</name>
+    <vendor email="hello@kulina.dev">Marcel Kulina</vendor>
+
+    <description><![CDATA[
+        Language support for the Iona programming language: file recognition and
+        syntax highlighting, with PSI-based structural support to follow.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType
+            name="Iona File"
+            implementationClass="dev.iona.lang.IonaFileType"
+            fieldName="INSTANCE"
+            language="Iona"
+            extensions="iona"/>
+
+        <lang.syntaxHighlighterFactory
+            language="Iona"
+            implementationClass="dev.iona.lang.highlighter.IonaSyntaxHighlighterFactory"/>
+
+        <lang.parserDefinition
+            language="Iona"
+            implementationClass="dev.iona.lang.parser.IonaParserDefinition"/>
+
+        <externalAnnotator
+            language="Iona"
+            implementationClass="dev.iona.ide.annotator.IonaExternalAnnotator"/>
+
+        <configurationType
+            implementation="dev.iona.ide.run.IonaRunConfigurationType"/>
+
+        <runConfigurationProducer
+            implementation="dev.iona.ide.run.IonaRunConfigurationProducer"/>
+    </extensions>
+</idea-plugin>

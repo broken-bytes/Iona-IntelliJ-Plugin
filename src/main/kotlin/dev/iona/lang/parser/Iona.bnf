@@ -1,0 +1,206 @@
+{
+  parserClass="dev.iona.lang.parser.IonaParser"
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Iona"
+  psiImplClassSuffix="Impl"
+  psiPackage="dev.iona.lang.psi"
+  psiImplPackage="dev.iona.lang.psi.impl"
+
+  elementTypeHolderClass="dev.iona.lang.psi.IonaTypes"
+  elementTypeClass="dev.iona.lang.psi.IonaElementType"
+  tokenTypeClass="dev.iona.lang.psi.IonaTokenType"
+  // Named declarations + identifier uses get behaviour from Kotlin mixin base classes (mixin=...),
+  // since Grammar-Kit can't introspect a Kotlin object as a psiImplUtilClass.
+
+  // Single source of truth for tokens: Grammar-Kit generates these IElementType constants
+  // into IonaTypes, and the JFlex lexer (Iona.flex) returns the very same constants.
+  // The 'text' on each entry is only used by Grammar-Kit's live preview, not at runtime.
+  tokens=[
+    // trivia (LINEBREAK + comments are treated as whitespace by IonaParserDefinition)
+    LINEBREAK='\n'  LINE_COMMENT='//comment'  BLOCK_COMMENT='/*comment*/'
+
+    // literals & identifiers
+    IDENTIFIER='identifier'  INTEGER='0'  DOUBLE='0.0'  FLOAT='0.0f'  STRING='"..."'
+
+    // keywords
+    ACTOR='actor'  AS='as'  ASYNC='async'  AWAIT='await'  BREAK='break'
+    CAPTURED='captured'  CATCH='catch'  CLASS='class'  CONTINUE='continue'
+    CONTRACT='contract'  DEFER='defer'  DO='do'  ELSE='else'  ENUM='enum'
+    FALSE='false'  FILEPRIVATE='fileprivate'  FOR='for'  FROM='from'  FN='fn'
+    GUARD='guard'  IF='if'  IN='in'  USE='use'  INIT='init'  INTERNAL='internal'
+    LET='let'  MODULE='module'  MUT='mut'  NULL='null'  OP='op'  OPEN='open'
+    PRIVATE='private'  PUBLIC='public'  RECORD='record'  RETURN='return'
+    SELF='self'  STATIC='static'  STRUCT='struct'  TASK='task'  THROW='throw'
+    THROWS='throws'  TRUE='true'  TRY='try'  UNTIL='until'  VAR='var'  WHEN='when'
+    WHILE='while'  WITH='with'  YIELD='yield'
+
+    // operators
+    RANGE='...'  SCOPE='::'  ARROW='->'  INCREMENT='++'  DECREMENT='--'
+    SHL_ASSIGN='<<='  SHR_ASSIGN='>>='  SHL='<<'  SHR='>>'
+    PLUS_ASSIGN='+='  MINUS_ASSIGN='-='  MUL_ASSIGN='*='  DIV_ASSIGN='/='
+    MOD_ASSIGN='%='  AND_ASSIGN='&='  OR_ASSIGN='|='  XOR_ASSIGN='^='
+    EQUAL='=='  NOT_EQUAL='!='  LESS_EQUAL='<='  GREATER_EQUAL='>='
+    AND_AND='&&'  OR_OR='||'  PLUS='+'  MINUS='-'  MULTIPLY='*'  DIVIDE='/'
+    MODULO='%'  BIT_AND='&'  BIT_OR='|'  XOR='^'  BIT_INVERSE='~'  NOT='!'
+    ASSIGN='='  LESS='<'  GREATER='>'  DOT='.'  OPTIONAL='?'  ANNOTATION='@'
+
+    // punctuation & grouping
+    COLON=':'  COMMA=','
+    PAREN_LEFT='('  PAREN_RIGHT=')'  BRACKET_LEFT='['  BRACKET_RIGHT=']'
+    CURLY_LEFT='{'  CURLY_RIGHT='}'
+  ]
+}
+
+// ============================ File & top level ============================
+
+ionaFile ::= moduleDecl? topItem*
+
+moduleDecl ::= MODULE qualifiedName
+useDecl    ::= USE qualifiedName
+
+qualifiedName ::= IDENTIFIER (DOT IDENTIFIER)*
+
+private topItem ::= useDecl
+                  | classDecl
+                  | structDecl
+                  | recordDecl
+                  | contractDecl
+                  | enumDecl
+                  | funcDecl
+                  | operatorDecl
+                  | initDecl
+                  | propertyDecl
+
+// Access + behavioural modifiers, in any order. Private => no PSI node of its own.
+private modifiers ::= modifier*
+private modifier ::= PUBLIC | PRIVATE | INTERNAL | FILEPRIVATE | OPEN | STATIC | ASYNC | MUT
+
+// ============================ Type declarations ============================
+// Named declarations implement IonaNamedElement (PsiNameIdentifierOwner) for go-to-def / find-usages.
+
+classDecl    ::= modifiers CLASS    IDENTIFIER typeParams? inheritanceClause? typeBody { mixin="dev.iona.lang.psi.IonaNamedElementImpl" implements="dev.iona.lang.psi.IonaNamedElement" }
+structDecl   ::= modifiers STRUCT   IDENTIFIER typeParams? inheritanceClause? typeBody { mixin="dev.iona.lang.psi.IonaNamedElementImpl" implements="dev.iona.lang.psi.IonaNamedElement" }
+recordDecl   ::= modifiers RECORD   IDENTIFIER typeParams? inheritanceClause? typeBody { mixin="dev.iona.lang.psi.IonaNamedElementImpl" implements="dev.iona.lang.psi.IonaNamedElement" }
+contractDecl ::= modifiers CONTRACT IDENTIFIER typeParams? inheritanceClause? typeBody { mixin="dev.iona.lang.psi.IonaNamedElementImpl" implements="dev.iona.lang.psi.IonaNamedElement" }
+enumDecl     ::= modifiers ENUM     IDENTIFIER typeParams? inheritanceClause? typeBody { mixin="dev.iona.lang.psi.IonaNamedElementImpl" implements="dev.iona.lang.psi.IonaNamedElement" }
+
+typeParams ::= LESS IDENTIFIER (COMMA IDENTIFIER)* GREATER
+inheritanceClause ::= COLON typeRef (COMMA typeRef)*
+
+typeBody ::= CURLY_LEFT member* CURLY_RIGHT
+private member ::= funcDecl | initDecl | operatorDecl | propertyDecl
+
+// ============================ Member / top declarations ============================
+
+funcDecl ::= modifiers FN IDENTIFIER paramList (ARROW typeRef)? throwsClause? block? {
+  pin=2
+  mixin="dev.iona.lang.psi.IonaNamedElementImpl"
+  implements="dev.iona.lang.psi.IonaNamedElement"
+}
+throwsClause ::= THROWS
+
+paramList ::= PAREN_LEFT (param (COMMA param)*)? PAREN_RIGHT
+param ::= IDENTIFIER COLON typeRef {
+  mixin="dev.iona.lang.psi.IonaNamedElementImpl"
+  implements="dev.iona.lang.psi.IonaNamedElement"
+}
+
+initDecl ::= modifiers INIT paramList? block?
+
+operatorDecl ::= modifiers OP operatorSymbol paramList ARROW typeRef block?
+private operatorSymbol ::= PLUS | MINUS | MULTIPLY | DIVIDE | MODULO
+                         | EQUAL | NOT_EQUAL | LESS | GREATER | LESS_EQUAL | GREATER_EQUAL
+                         | AND_AND | OR_OR | NOT
+                         | PLUS_ASSIGN | MINUS_ASSIGN | MUL_ASSIGN | DIV_ASSIGN
+
+propertyDecl ::= modifiers (LET | VAR) IDENTIFIER (COLON typeRef)? (ASSIGN expr)? {
+  pin=2
+  mixin="dev.iona.lang.psi.IonaNamedElementImpl"
+  implements="dev.iona.lang.psi.IonaNamedElement"
+}
+
+// ============================ Types ============================
+
+typeRef ::= arrayType | namedType
+arrayType ::= BRACKET_LEFT typeRef BRACKET_RIGHT typeSuffix?
+namedType ::= qualifiedName typeArgs? typeSuffix?
+typeArgs  ::= LESS typeRef (COMMA typeRef)* GREATER
+private typeSuffix ::= OPTIONAL | NOT   // T? optional, T! implicitly-unwrapped
+
+// ============================ Statements ============================
+
+block ::= CURLY_LEFT statement* CURLY_RIGHT { pin=1 }
+
+private statement ::= varDecl
+                    | returnStmt
+                    | breakStmt
+                    | continueStmt
+                    | throwStmt
+                    | ifStmt
+                    | whileStmt
+                    | forStmt
+                    | guardStmt
+                    | exprStatement
+
+varDecl ::= (LET | VAR) IDENTIFIER (COLON typeRef)? (ASSIGN expr)? {
+  pin=1
+  mixin="dev.iona.lang.psi.IonaNamedElementImpl"
+  implements="dev.iona.lang.psi.IonaNamedElement"
+}
+
+returnStmt   ::= RETURN expr?
+breakStmt    ::= BREAK
+continueStmt ::= CONTINUE
+throwStmt    ::= THROW expr
+
+ifStmt    ::= IF expr block (ELSE (ifStmt | block))?
+whileStmt ::= WHILE expr block
+forStmt   ::= FOR IDENTIFIER IN expr block
+
+guardStmt    ::= GUARD (guardBinding | expr) ELSE block
+guardBinding ::= (VAR | LET) IDENTIFIER ASSIGN expr
+
+// Expression statement, optionally an assignment.
+exprStatement ::= expr (assignOp expr)?
+private assignOp ::= ASSIGN | PLUS_ASSIGN | MINUS_ASSIGN | MUL_ASSIGN | DIV_ASSIGN | MOD_ASSIGN
+
+// ============================ Expressions (precedence cascade) ============================
+// Lowest binding at the top, highest at the bottom. Mirrors ExpressionParser's shunting-yard
+// levels: range < || < && < equality < relational < additive < multiplicative < cast < unary < postfix.
+
+expr ::= AWAIT expr | rangeExpr
+
+rangeExpr        ::= orExpr (RANGE orExpr)?
+orExpr           ::= andExpr (OR_OR andExpr)*
+andExpr          ::= equalityExpr (AND_AND equalityExpr)*
+equalityExpr     ::= relationalExpr ((EQUAL | NOT_EQUAL) relationalExpr)*
+relationalExpr   ::= additiveExpr ((LESS | GREATER | LESS_EQUAL | GREATER_EQUAL) additiveExpr)*
+additiveExpr     ::= multiplicativeExpr ((PLUS | MINUS) multiplicativeExpr)*
+multiplicativeExpr ::= castExpr ((MULTIPLY | DIVIDE | MODULO) castExpr)*
+castExpr         ::= unaryExpr (AS typeRef)?
+unaryExpr        ::= (PLUS | MINUS | NOT | INCREMENT | DECREMENT) unaryExpr | postfixExpr
+
+postfixExpr ::= primaryExpr postfixOp*
+private postfixOp ::= memberAccess | scopeAccess | callSuffix | indexSuffix | NOT | OPTIONAL
+
+memberAccess ::= DOT IDENTIFIER
+scopeAccess  ::= SCOPE IDENTIFIER
+callSuffix   ::= PAREN_LEFT (argument (COMMA argument)*)? PAREN_RIGHT
+indexSuffix  ::= BRACKET_LEFT expr BRACKET_RIGHT
+
+// Iona calls are normally named (name: value); allow bare expr too for robustness.
+argument ::= namedArgument | expr
+namedArgument ::= IDENTIFIER COLON expr
+
+primaryExpr ::= literal
+              | SELF
+              | referenceExpr
+              | PAREN_LEFT expr PAREN_RIGHT
+
+// A bare identifier use; carries a reference resolving to its declaration.
+referenceExpr ::= IDENTIFIER {
+  mixin="dev.iona.lang.psi.IonaReferenceExprMixin"
+}
+
+private literal ::= INTEGER | DOUBLE | FLOAT | STRING | TRUE | FALSE | NULL
