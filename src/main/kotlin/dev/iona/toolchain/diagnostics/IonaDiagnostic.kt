@@ -1,4 +1,4 @@
-package dev.iona.toolchain
+package dev.iona.toolchain.diagnostics
 
 import com.google.gson.Gson
 

@@ -6,8 +6,9 @@ import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiFile
-import dev.iona.toolchain.IonaDiagnostic
+import dev.iona.toolchain.diagnostics.IonaDiagnostic
 import dev.iona.toolchain.IonaToolchain
+import dev.iona.toolchain.diagnostics.DiagnosticsRunner
 
 class IonaExternalAnnotator : ExternalAnnotator<IonaExternalAnnotator.CollectedInfo, List<IonaDiagnostic>>() {
 
@@ -19,7 +20,7 @@ class IonaExternalAnnotator : ExternalAnnotator<IonaExternalAnnotator.CollectedI
     override fun collectInformation(file: PsiFile): CollectedInfo = CollectedInfo(file.text)
 
     override fun doAnnotate(info: CollectedInfo): List<IonaDiagnostic> {
-        val run = IonaToolchain.runDiagnostics(info.text)
+        val run = DiagnosticsRunner.runDiagnostics(info.text)
         when {
             run.command == null -> LOG.warn(
                 "Iona diagnostics disabled: set -D${IonaToolchain.PROP_COMMAND}, " +

@@ -2,7 +2,7 @@ package dev.iona.ide.annotator
 
 import com.intellij.openapi.editor.Document
 import com.intellij.openapi.util.TextRange
-import dev.iona.toolchain.IonaDiagnostic
+import dev.iona.toolchain.diagnostics.IonaDiagnostic
 
 fun IonaDiagnostic.toTextRange(doc: Document): TextRange {
     val lastLine = (doc.lineCount - 1).coerceAtLeast(0)

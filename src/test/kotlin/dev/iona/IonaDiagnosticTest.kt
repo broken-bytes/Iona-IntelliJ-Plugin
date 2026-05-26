@@ -3,7 +3,7 @@ package dev.iona
 import com.intellij.openapi.editor.impl.DocumentImpl
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import dev.iona.ide.annotator.toTextRange
-import dev.iona.toolchain.IonaDiagnostic
+import dev.iona.toolchain.diagnostics.IonaDiagnostic
 
 class IonaDiagnosticTest : BasePlatformTestCase() {
 
